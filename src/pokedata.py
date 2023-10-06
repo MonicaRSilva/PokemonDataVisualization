@@ -1,6 +1,7 @@
 import csv
 import os.path
 from bs4 import BeautifulSoup
+import re
 
 class PokeData:
 
@@ -15,12 +16,12 @@ class PokeData:
                 ,'base_stats', 'base_stats_min', 'base_stats_max'
                 ,'base_stats_total']
     
-    def __init__(self, html):
+    def __init__(self, soup):
         self.pokedict = None
         self.pokedicts = []
-        html = html.replace('&nbsp;', ' ')
-        self.soup = BeautifulSoup(html, 'html.parser')
-           
+        #html = html.replace('&nbsp;', ' ')
+        self.soup = soup
+
             
     def get_vitals(self, div_id):
         tab_div = self.soup.find('div',{'id':div_id})
@@ -37,12 +38,13 @@ class PokeData:
         height = tds[3].text
         if height.strip() != '—':
             self.pokedict['height'] = height[height.index('(')+1:height.index(')')]
-            self.pokedict['height_m'] = height[:height.index('(')].strip()
+            self.pokedict['height_m'] = height[:height.index('(')].strip().replace(' ',' ')
+
         
         weight = tds[4].text
         if weight.strip() != '—':
-            self.pokedict['weight'] = weight[weight.index('(')+1:weight.index(')')]
-            self.pokedict['weight_kg'] = weight[:weight.index('(')].strip()
+            self.pokedict['weight'] = weight[weight.index('(')+1:weight.index(')')].replace(' ',' ')
+            self.pokedict['weight_kg'] = weight[:weight.index('(')].strip().replace(' ',' ')
         
         abilities = []
         for span in tds[5].findAll('span'):
@@ -148,13 +150,14 @@ class PokeData:
         self.pokedict['name'] = self.soup.find('h1').text.strip()
         other_lang = self.soup.find('h2',text='Other languages')
         if other_lang != None:
-            tds = other_lang.parent.find_all('td')            
-            self.pokedict['name_jp'] = tds[1].text.split()[0].strip()
-            self.pokedict['name_jp_ro'] = tds[1].text.split()[1].strip()[1:-1]
+            tds = other_lang.parent.find_all('td')   
+            names_jp = tds[1].text.split()         
+            self.pokedict['name_jp'] = names_jp[0].strip()
+            self.pokedict['name_jp_ro'] = names_jp[1].strip()[1:-1] if len(names_jp) > 1 else ''
             self.pokedict['name_de'] = tds[2].text.strip()
             self.pokedict['name_fr'] = tds[3].text.strip()
             
-        tabs = self.soup.find('div', {'class':'tabs-tab-list'}).find_all('a')
+        tabs = self.soup.find('div', {'class':'sv-tabs-tab-list'}).find_all('a')
 
         for tab in tabs:
             if div_id == tab['href'][1:]:
@@ -162,7 +165,7 @@ class PokeData:
       
     
     def get_data(self):
-        tabs = self.soup.find('div', {'class':'tabs-tab-list'}).find_all('a')
+        tabs = self.soup.find('div', {'class':'sv-tabs-tab-list'}).find_all('a')
 
         for tab in tabs:
             div_id = tab['href'][1:]
